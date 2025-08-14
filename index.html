@@ -3,406 +3,188 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Color Coherence Lamp — MindLamp</title>
-  <meta name="theme-color" content="#38bdf8"/>
+  <title>QRNG Art Studio</title>
+  <meta name="theme-color" content="#111827"/>
   <style>
-    :root{
-      --bg:#0b0f1a; --panel:#121936; --ink:#eaf2ff; --muted:#9bb0d7; --accent:#38bdf8; --border:#263259;
-    }
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-    .wrap{max-width:900px;margin:0 auto;padding:20px 16px 44px}
-    header{padding:10px 0 16px;text-align:center}
-    h1{margin:0;font-size:22px;letter-spacing:.3px}
-    .subtitle{color:var(--muted);font-size:13px;margin-top:6px}
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:14px}
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:center}
-    button{background:linear-gradient(180deg,#38bdf8,#0ea5e9);border:none;color:#00111a;border-radius:12px;
-      padding:12px 18px;font-weight:800;cursor:pointer;font-size:16px}
+    :root{ --bg:#0b0f1a; --panel:#0f172a; --ink:#e5edff; --muted:#94a3b8; --accent:#38bdf8; --border:#1f2a44; }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px 14px 36px}
+    header{text-align:center;margin-bottom:10px}
+    h1{font-size:22px;margin:0}
+    .sub{color:var(--muted);font-size:13px;margin-top:6px}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
+    button{background:linear-gradient(180deg,#38bdf8,#0ea5e9);border:none;color:#00111a;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer;font-size:15px}
     button.ghost{background:#0f1735;color:#cfe3ff;border:1px solid var(--border)}
     button:disabled{opacity:.6;cursor:not-allowed}
-    .lamp{width:100%;aspect-ratio: 3/2;border-radius:18px;border:1px solid var(--border);
-      background:#0a1025;box-shadow:0 20px 80px rgba(0,0,0,.35) inset, 0 10px 30px rgba(56,189,248,.18);
-      transition: background 200ms ease, box-shadow 200ms ease, transform 160ms ease}
-    .lamp:hover{transform: translateY(-1px)}
-    .rowinfo{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:12px}
-    .pill{display:inline-block;border:1px solid var(--border);background:#0f1735;color:#cfe3ff;
-      padding:8px 12px;border-radius:999px;font-size:12px}
-    .muted{color:var(--muted);font-size:12px;text-align:center;margin-top:10px}
-    .ctl{display:flex;gap:12px;row-gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin:14px 0}
     select,input[type="range"]{background:#0e1020;border:1px solid var(--border);color:#e8ecff;border-radius:10px;padding:8px 10px}
-    .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:#0f1735;color:#cfe3ff;font-size:12px}
-    .dot{width:12px;height:12px;border-radius:999px;border:1px solid var(--border)}
-    .fsWrap{position:relative}
-    .fsBtn{position:absolute;right:12px;top:12px}
-    .targets{display:flex;gap:8px;row-gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;margin:12px 0}
-    .target{cursor:pointer; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background:#0f1735; color:#cfe3ff; font-size:12px}
-    .target.active{outline:2px solid #38bdf8}
-    .settingsToggle{display:flex;justify-content:center;margin-top:12px}
-    .settingsPanel{display:none}
-    /* Mobile spacing adjustments */
-    @media (max-width: 600px){
-      .wrap{padding:16px 12px 36px}
-      .ctl, .targets, .row{gap:10px}
-      .pill{font-size:12px}
-      select,input[type="range"]{width: min(260px, 90vw)}
-      #influence{max-width:220px}
+    .pill{display:inline-block;border:1px solid var(--border);background:#0f1735;color:#cfe3ff;padding:6px 10px;border-radius:999px;font-size:12px}
+    .canvasWrap{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--border);box-shadow:inset 0 0 60px rgba(0,0,0,.25)}
+    canvas{display:block;width:100%;height:auto;background:#050915}
+    .status{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:10px}
+    .bar{width:160px;height:8px;background:#0f1735;border-radius:20px;border:1px solid var(--border);overflow:hidden}
+    .bar>i{display:block;height:100%;width:10%;background:#38bdf8}
+    .note{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+    @media (max-width:640px){
+      .wrap{padding:14px 10px 30px}
+      button{font-size:14px}
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>Color Coherence Lamp</h1>
-      <div class="subtitle">PEAR-style feedback: recent RNG drift nudges the color</div>
+      <h1>QRNG Art Studio</h1>
+      <div class="sub">Generative art steered by a quantum random source (with graceful offline fallback)</div>
     </header>
 
-    <div class="card">
-      <div class="row" style="margin-bottom:10px">
-        <button id="startBtn">Start</button>
-        <button id="stopBtn" disabled>End</button>
+    <div class="panel" style="margin-bottom:10px">
+      <div class="row" style="margin-bottom:8px">
+        <button id="genBtn">Generate</button>
+        <button id="animBtn" class="ghost">Animate</button>
+        <button id="saveBtn" class="ghost">Save PNG</button>
+        <button id="fsBtn" class="ghost">Fullscreen</button>
+
+        <span class="pill">Style</span>
+        <select id="style">
+          <option value="aurora" selected>Aurora Veils</option>
+          <option value="spirals">Sacred Spirals</option>
+          <option value="constellations">Constellation Field</option>
+          <option value="mondrian">Quantum Mondrian</option>
+          <option value="pointillism">Pointillist Bloom</option>
+        </select>
+
+        <span class="pill">Detail</span>
+        <input id="detail" type="range" min="0.5" max="2.0" value="1.0" step="0.1"/>
       </div>
 
-      <div class="fsWrap">
-        <div class="lamp" id="lamp"></div>
-        <button id="fullscreenBtn" class="fsBtn ghost">Fullscreen</button>
+      <div class="row">
+        <span class="pill" id="statusPill">QRNG: connecting…</span>
+        <span class="pill" id="seedPill">Seed —</span>
+        <span class="pill" id="sizePill">Canvas —</span>
+        <span class="bar"><i id="entropyFill" style="width:10%"></i></span>
       </div>
-
-      <!-- Target controls stay visible for demos -->
-      <div id="targetRow" class="targets">
-        <span class="pill">Target color</span>
-        <button class="target" data-hex="#FFFFFF" style="background:#ffffff;color:#111">White</button>
-        <button class="target" data-hex="#FF0000" style="background:#ff0000">Red</button>
-        <button class="target" data-hex="#FF7A00" style="background:#ff7a00">Orange</button>
-        <button class="target" data-hex="#FFD400" style="background:#ffd400;color:#111">Yellow</button>
-        <button class="target" data-hex="#00C853" style="background:#00c853">Green</button>
-        <button class="target" data-hex="#00E5FF" style="background:#00e5ff;color:#111">Cyan</button>
-        <button class="target" data-hex="#2962FF" style="background:#2962ff">Blue</button>
-        <button class="target" data-hex="#7B1FA2" style="background:#7b1fa2">Purple</button>
-        <button class="target" data-hex="#FF00AA" style="background:#ff00aa">Magenta</button>
-        <button class="target" data-hex="" id="clearTarget">Clear</button>
-      </div>
-
-      <!-- Settings panel (hidden by default) -->
-      <div class="settingsToggle">
-        <button id="toggleSettings" class="ghost">Show settings</button>
-      </div>
-      <div id="settingsPanel" class="settingsPanel">
-        <div class="ctl">
-          <span class="pill">Mode</span>
-          <select id="mode">
-            <option value="discrete">MindLamp (Discrete colors)</option>
-            <option value="continuous" selected>Rainbow (Continuous)</option>
-          </select>
-
-          <span class="pill">Sensitivity</span>
-          <!-- slider 0..1 mapped internally to gain 0.5..8 -->
-          <input id="gain" type="range" min="0" max="1" step="0.05" value="0.7"/>
-
-          <span class="pill">Recent window</span>
-          <select id="win">
-            <option value="10">10</option>
-            <option value="15" selected>15</option>
-            <option value="20">20</option>
-          </select>
-
-          <span class="pill">Target influence</span>
-          <select id="influence">
-            <option value="off" selected>Off (pure Z)</option>
-            <option value="gentle">Gentle</option>
-            <option value="classic">Classic</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="rowinfo">
-        <span class="pill" id="status">Idle</span>
-        <span class="pill" id="elapsed">Elapsed 00:00</span>
-        <span class="pill" id="readout">Recent Z —</span>
-        <span class="pill" id="hex">#000000</span>
-      </div>
-
-      <div class="muted">Defaults: Continuous mode, sensitivity 0.7, window 15. Pick a target anytime. “Target influence” lets you choose pure‑Z or a gentle/classic nudge.</div>
+      <div class="note">Tip: click “Animate” for a living piece. “Generate” makes a fresh still using new quantum entropy.</div>
     </div>
+
+    <div class="canvasWrap">
+      <canvas id="c"></canvas>
+    </div>
+
+    <div class="note">Made with love for Clare — where intention meets emergence ✨</div>
   </div>
 
   <script>
-  // =============== Math helpers ===============
-  function erf(x){const s=x>=0?1:-1; x=Math.abs(x); const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911; const t=1/(1+p*x); const y=1-((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x); return s*y;}
-  function cdfNormal(z){return .5*(1+erf(z/Math.SQRT2));}
-  function stoufferZ(zs){if(!zs.length) return 0; const s=zs.reduce((a,b)=>a+b,0); return s/Math.sqrt(zs.length);}
-  function twoSidedP(z){return 2*(1-cdfNormal(Math.abs(z)));}
-  function clamp(v,a,b){return Math.max(a, Math.min(b, v));}
-  function hsl(h,s,l){ return `hsl(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%)`; }
-  function hslToHex(h, s, l) {
-    let r, g, b;
-    if (s === 0) { r = g = b = l; }
-    else {
-      const hue2rgb=(p,q,t)=>{ if(t<0) t+=1; if(t>1) t-=1;
-        if(t<1/6) return p+(q-p)*6*t;
-        if(t<1/2) return q;
-        if(t<2/3) return p+(q-p)*(2/3-t)*6;
-        return p; };
-      const q = l<0.5 ? l*(1+s) : l + s - l*s;
-      const p = 2*l - q;
-      r = hue2rgb(p,q,h+1/3);
-      g = hue2rgb(p,q,h);
-      b = hue2rgb(p,q,h-1/3);
-    }
-    const toHex=x=>Math.round(x*255).toString(16).padStart(2,'0');
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
-  }
-
-  function hexToRgb(hex){
-    const h = hex.replace('#','');
-    const bigint = parseInt(h, 16);
-    const r = (bigint >> 16) & 255;
-    const g = (bigint >> 8) & 255;
-    const b = bigint & 255;
-    return {r,g,b};
-  }
-  function rgbToHex(r,g,b){
-    const to = v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0');
-    return '#' + to(r) + to(g) + to(b);
-  }
-  function blendHex(a,b,t){
-    const ra=hexToRgb(a), rb=hexToRgb(b);
-    const r=ra.r + (rb.r-ra.r)*t, g=ra.g + (rb.g-ra.g)*t, b2=ra.b + (rb.b-ra.b)*t;
-    return rgbToHex(r,g,b2).toUpperCase();
-  }
-
-  // =============== QRNG with fallback ===============
-  async function qrng(len){
-    try{
-      const r = await fetch(`/.netlify/functions/qrng?len=${len}`, {mode:'cors'});
-      if(!r.ok) throw new Error('qrng http '+r.status);
-      const j = await r.json();
-      const arr = j.data || [];
-      if(arr.length) return new Uint16Array(arr.map(x=>x & 0xFFFF));
-      throw new Error('qrng empty');
-    }catch(e){
-      const u16 = new Uint16Array(len);
-      crypto.getRandomValues(u16);
-      return u16;
-    }
-  }
-
-  // =============== Engine ===============
-  const Engine = {
-    recent: [], ema:0, hasEma:false, t:0,
-    win: 15,                      // window 15
-    gain: 0.5 + 0.7 * 7.5,        // maps slider(0..1=0.7) -> ~5.75
-    mode: 'continuous',           // default continuous
-    palette: [
-      '#FFFFFF', '#FF0000', '#FF7A00', '#FFD400',
-      '#00C853', '#00E5FF', '#2962FF', '#7B1FA2', '#FF00AA'
-    ],
-    target: '',                   // hex or ''
-    influence: 'off'              // 'off' | 'gentle' | 'classic'
+  const QRNG = {
+    buf: new Uint16Array(0), i: 0, online: false, fetching: false, statusEl: null, entropyEl: null,
+    async topUp(target=2048){
+      if(this.fetching) return;
+      if(this.buf.length - this.i > target/4) return;
+      this.fetching = true;
+      try{
+        const r = await fetch(`/.netlify/functions/qrng?len=${target}`, {mode:'cors'});
+        if(!r.ok) throw new Error('http '+r.status);
+        const j = await r.json();
+        const arr = (j && Array.isArray(j.data)) ? j.data : [];
+        if(!arr.length) throw new Error('empty');
+        const more = new Uint16Array(arr.map(x=>x & 0xFFFF));
+        if(this.i >= this.buf.length){ this.buf = more; this.i = 0; }
+        else{
+          const remain = this.buf.slice(this.i);
+          this.buf = new Uint16Array(remain.length + more.length);
+          this.buf.set(remain,0); this.buf.set(more,remain.length); this.i = 0;
+        }
+        this.online = true; this.setStatus('QRNG online');
+      }catch(e){
+        const more = new Uint16Array(target); crypto.getRandomValues(more);
+        if(this.i >= this.buf.length){ this.buf = more; this.i = 0; }
+        else{
+          const remain = this.buf.slice(this.i);
+          this.buf = new Uint16Array(remain.length + more.length);
+          this.buf.set(remain,0); this.buf.set(more,remain.length); this.i = 0;
+        }
+        if(!this.online) this.setStatus('Using local RNG (offline)');
+      }finally{ this.fetching=false; this.updateEntropy(); }
+    },
+    need(n){ if(this.buf.length - this.i < n) return this.topUp(Math.max(2048, n*2)); },
+    u16(){ if(this.i >= this.buf.length){ this.topUp(); return (Math.random()*65536)|0; } const v=this.buf[this.i++]; this.updateEntropy(); return v; },
+    f32(){ return this.u16() / 65535; },
+    setStatus(msg){ if(this.statusEl) this.statusEl.textContent = msg; },
+    updateEntropy(){ if(!this.entropyEl) return; const remain = Math.max(0, this.buf.length - this.i); const ratio = Math.max(0.02, Math.min(1, remain / Math.max(1,this.buf.length))); this.entropyEl.style.width = (ratio*100).toFixed(0)+'%'; }
   };
 
-  function influenceAmounts() {
-    if (Engine.influence === 'gentle')  return { cont: 0.12, disc: 0.25 };
-    if (Engine.influence === 'classic') return { cont: 0.18, disc: 0.40 };
-    return { cont: 0.0, disc: 0.0 };
+  const canvas = document.getElementById('c'); const ctx = canvas.getContext('2d');
+  function resize(){ const rect = canvas.parentElement.getBoundingClientRect(); const w = Math.max(640, Math.floor(rect.width)); const h = Math.floor(w*9/16); canvas.width=w*2; canvas.height=h*2; canvas.style.height=h+'px'; canvas.style.width=w+'px'; document.getElementById('sizePill').textContent=`Canvas — ${w}×${h}`; }
+  window.addEventListener('resize', resize); resize();
+
+  function rand(){ return QRNG.f32(); }
+  function rint(a,b){ return Math.floor(a + rand()*(b-a+1)); }
+  function choice(arr){ return arr[rint(0, arr.length-1)]; }
+  function gauss(){ let u=0,v=0; while(u===0) u=rand(); while(v===0) v=rand(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+
+  const PALETTES = [
+    ['#0ea5e9','#22d3ee','#a78bfa','#f472b6','#f59e0b'],
+    ['#ff5d73','#ffd166','#06d6a0','#118ab2','#073b4c'],
+    ['#fde68a','#fca5a5','#93c5fd','#34d399','#fbb6ce'],
+    ['#ffffff','#9fb3ff','#7ee0ff','#a0ffd6','#ffe29f'],
+    ['#ff5f6d','#ffc371','#00c6ff','#0072ff','#48c6ef']
+  ];
+
+  function clear(bg='#050915'){ ctx.fillStyle=bg; ctx.fillRect(0,0,canvas.width,canvas.height); }
+
+  function starfield(n=60, alpha=0.6){
+    ctx.save(); ctx.globalAlpha=alpha;
+    for(let i=0;i<n;i++){ const x=rand()*canvas.width, y=rand()*canvas.height, s=Math.pow(rand(),2)*3+0.6; ctx.fillStyle='white'; ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill(); }
+    ctx.restore();
+  }
+  function glow(strength=1){ ctx.globalCompositeOperation='lighter'; ctx.filter='blur('+2*strength+'px)'; ctx.drawImage(canvas,0,0); ctx.filter='none'; ctx.globalCompositeOperation='source-over'; }
+
+  function auroraVeils(detail=1){
+    clear('#040713'); const layers=Math.round(6*detail);
+    for(let i=0;i<layers;i++){ const hue=rint(180,340); const alpha=0.06+0.06*rand(); const y0=canvas.height*(0.1+0.8*rand()); const amp=canvas.height*(0.08+0.2*rand()); const wig=2+6*rand(); const width=canvas.width*(0.5+rand()*0.6); const x0=canvas.width*rand(); ctx.fillStyle='hsla('+hue+',90%,60%,'+alpha.toFixed(3)+')'; ctx.beginPath(); ctx.moveTo(x0-width/2,y0); const steps=20+Math.floor(120*detail); for(let s=0;s<=steps;s++){ const t=s/steps; const x=x0-width/2+width*t; const y=y0+Math.sin(t*Math.PI*wig+rand()*0.5)*amp*(0.6+0.4*rand()); ctx.lineTo(x,y);} ctx.lineTo(x0+width/2,canvas.height+10); ctx.lineTo(x0-width/2,canvas.height+10); ctx.closePath(); ctx.filter='blur('+(2+4*rand())+'px)'; ctx.fill(); ctx.filter='none'; }
+    starfield(60*detail,0.6);
   }
 
-  function setLamp(hex){
-    const el = document.getElementById('lamp');
-    el.style.background = hex;
-    el.style.boxShadow = `0 20px 80px rgba(0,0,0,.35) inset, 0 10px 30px rgba(255,255,255,.15)`;
-    document.getElementById('hex').textContent = hex.toUpperCase();
+  function sacredSpirals(detail=1){
+    clear('#030510'); const palette=choice(PALETTES); const arms=2+rint(0,4); const centers=1+rint(0,2);
+    for(let c=0;c<centers;c++){ const cx=canvas.width*(0.3+0.4*rand()); const cy=canvas.height*(0.35+0.3*rand()); const base=canvas.width*(0.004+0.01*rand());
+      for(let a=0;a<arms;a++){ const rot=(2*Math.PI*a/arms)+rand()*0.5; const points=400+Math.floor(600*detail); const growth=1.005+0.003*rand(); let r=base*(0.5+rand()); ctx.lineWidth=1+2*rand(); ctx.strokeStyle=choice(palette); ctx.globalAlpha=0.6; ctx.beginPath(); for(let i=0;i<points;i++){ const th=rot+i*0.08; const x=cx+Math.cos(th)*r; const y=cy+Math.sin(th)*r; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); r*=growth; } ctx.stroke(); ctx.globalAlpha=1; }
+    } glow();
   }
 
-  function hueFromHex(hex){
-    const {r,g,b} = hexToRgb(hex);
-    const R=r/255, G=g/255, B=b/255;
-    const max = Math.max(R,G,B), min = Math.min(R,G,B);
-    let h=0, d=max-min;
-    if (d===0) h=0;
-    else if (max===R) h=( (G-B)/d )%6;
-    else if (max===G) h=( (B-R)/d )+2;
-    else h=( (R-G)/d )+4;
-    h = Math.round(h*60); if (h<0) h+=360;
-    return h;
+  function constellationField(detail=1){
+    clear('#050a18'); const stars=200+Math.floor(300*detail); const pts=[];
+    for(let i=0;i<stars;i++){ const x=rand()*canvas.width, y=rand()*canvas.height; const s=Math.pow(rand(),2)*3+0.5; pts.push({x,y,s}); ctx.fillStyle='rgba(255,255,255,'+(0.3+0.7*rand())+')'; ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill(); if(rand()<0.25){ ctx.fillStyle=choice(['#8ab6ff','#ffd18a','#bbf7d0']); ctx.beginPath(); ctx.arc(x,y,s*0.6,0,Math.PI*2); ctx.fill(); } }
+    const links=Math.round(150*detail); ctx.strokeStyle='rgba(120,180,255,0.25)';
+    for(let i=0;i<links;i++){ const a=pts[rint(0,pts.length-1)], b=pts[rint(0,pts.length-1)]; ctx.lineWidth=0.5+rand(); ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+    glow(1.5);
   }
 
-  function continuousColor(zRecent){
-    const x = Math.tanh(Engine.gain * zRecent);
-    let hue = ((x+1)/2)*360;
-    const { cont } = influenceAmounts();
-    if (Engine.target && cont > 0) {
-      const th = hueFromHex(Engine.target);
-      const diff = ((th - hue + 540)%360) - 180;
-      hue += cont * diff;
-    }
-    const sat = 80, light=55;
-    return hslToHex(hue/360, sat/100, light/100);
+  function mondrian(detail=1){
+    clear('#101318'); const rect={x:0,y:0,w:canvas.width,h:canvas.height}; const palette=['#fefefe','#e63946','#457b9d','#f1fa8c','#2a9d8f'];
+    function split(r,depth){ const min=120/detail; if(depth>5 || r.w<min || r.h<min || rand()<0.2){ ctx.fillStyle=(rand()<0.7)? '#0f172a' : palette[rint(0,palette.length-1)]; ctx.fillRect(r.x+2,r.y+2,r.w-4,r.h-4); ctx.strokeStyle='#0d1328'; ctx.lineWidth=6; ctx.strokeRect(r.x+3,r.y+3,r.w-6,r.h-6); return; }
+      const vertical = rand()<0.5; if(vertical){ const cut=r.x+r.w*(0.3+0.4*rand()); split({x:r.x,y:r.y,w:cut-r.x,h:r.h},depth+1); split({x:cut,y:r.y,w:r.x+r.w-cut,h:r.h},depth+1); } else { const cut=r.y+r.h*(0.3+0.4*rand()); split({x:r.x,y:r.y,w:r.w,h:cut-r.y},depth+1); split({x:r.x,y:cut,w:r.w,h:r.y+r.h-cut},depth+1); } }
+    split(rect,0);
   }
 
-  function discreteColor(zRecent){
-    const x = Math.tanh(Engine.gain * zRecent);
-    const t = (x+1)/2;
-    const N = Engine.palette.length;
-    const idx = t * N;
-    const i0 = Math.floor(idx) % N;
-    const i1 = (i0 + 1) % N;
-    const frac = idx - Math.floor(idx);
-    let c = blendHex(Engine.palette[i0], Engine.palette[i1], frac);
-    const { disc } = influenceAmounts();
-    if (Engine.target && disc > 0) {
-      c = blendHex(c, Engine.target, disc);
-    }
-    return c;
+  function pointillism(detail=1){
+    clear('#0a0f1e'); const palette=choice(PALETTES); const dots=1200+Math.floor(1800*detail);
+    for(let i=0;i<dots;i++){ const x=rand()*canvas.width, y=rand()*canvas.height; const s=Math.pow(rand(),2.2)*6+0.6; const c=palette[rint(0,palette.length-1)]; ctx.fillStyle=c; ctx.globalAlpha=0.35+0.6*rand(); ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill(); }
+    ctx.globalAlpha=1; glow(1.2);
   }
 
-  function updateLampFromZ(zRecent){
-    if(!Engine.hasEma){ Engine.ema = zRecent; Engine.hasEma = true; }
-    Engine.ema = 0.75*Engine.ema + 0.25*zRecent;
-    Engine.t += 0.012;
-    const felt = Engine.ema + 0.04*Math.sin(Engine.t);
+  function seedFromQRNG(){ const a=[QRNG.u16(),QRNG.u16(),QRNG.u16(),QRNG.u16()]; document.getElementById('seedPill').textContent='Seed '+a.map(x=>x.toString(16).padStart(4,'0')).join('-'); }
+  function renderOnce(){ const detail=parseFloat(document.getElementById('detail').value||'1'); const style=document.getElementById('style').value; QRNG.need(4096); seedFromQRNG(); if(style==='aurora') auroraVeils(detail); else if(style==='spirals') sacredSpirals(detail); else if(style==='constellations') constellationField(detail); else if(style==='mondrian') mondrian(detail); else pointillism(detail); }
 
-    const hex = (Engine.mode==='discrete') ? discreteColor(felt) : continuousColor(felt);
-    setLamp(hex);
-    document.getElementById('readout').textContent = `Recent Z ≈ ${zRecent.toFixed(2)} • p≈${twoSidedP(zRecent).toExponential(2)}`;
-  }
+  let anim=false, raf=0;
+  function tickAnim(){ if(!anim) return; const style=document.getElementById('style').value; const d=parseFloat(document.getElementById('detail').value||'1'); if(style==='aurora'){ auroraVeils(0.4*d);} else if(style==='spirals'){ sacredSpirals(0.6*d);} else if(style==='constellations'){ constellationField(0.5*d);} else if(style==='mondrian'){ mondrian(0.8*d);} else { pointillism(0.6*d);} raf=requestAnimationFrame(tickAnim); }
 
-  // =============== Session loop ===============
-  let running=false, timer=null, t0=0;
-  const statusEl = document.getElementById('status');
-  const elapsedEl = document.getElementById('elapsed');
+  document.getElementById('genBtn').addEventListener('click', renderOnce);
+  document.getElementById('animBtn').addEventListener('click', (e)=>{ anim=!anim; e.target.textContent=anim?'Stop':'Animate'; if(anim){ tickAnim(); } else { cancelAnimationFrame(raf); } });
+  document.getElementById('saveBtn').addEventListener('click', ()=>{ const a=document.createElement('a'); a.download='qrng-art-'+Date.now()+'.png'; a.href=canvas.toDataURL('image/png'); a.click(); });
+  document.getElementById('fsBtn').addEventListener('click', async()=>{ const box=document.querySelector('.canvasWrap'); const isFs=document.fullscreenElement!=null; try{ if(!isFs){ await box.requestFullscreen(); } else { await document.exitFullscreen(); } }catch(e){} });
 
-  function setStatus(txt){ statusEl.textContent = txt; }
-
-  function startTimer(){
-    t0 = Date.now();
-    if(timer) clearInterval(timer);
-    timer = setInterval(()=>{
-      const ms=Date.now()-t0;
-      const m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000);
-      elapsedEl.textContent = `Elapsed ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    }, 250);
-  }
-  function stopTimer(){ if(timer) clearInterval(timer); timer=null; }
-
-  async function tick(){
-    try{
-      const bitsPerTrial = 200;
-      const words = Math.ceil(bitsPerTrial/16);
-      const u16 = await qrng(words);
-      const bits = [];
-      for(let i=0;i<u16.length;i++){ let v=u16[i]; for(let b=0;b<16;b++){ bits.push((v>>b)&1); } }
-      const trial = bits.slice(0,bitsPerTrial);
-      const sum = trial.reduce((a,b)=>a+b,0);
-      const n = bitsPerTrial, mu=n/2, sigma=Math.sqrt(n/4);
-      const z = (sum - mu)/sigma;
-
-      Engine.recent.push(z);
-      while(Engine.recent.length > Engine.win) Engine.recent.shift();
-      const recentZ = stoufferZ(Engine.recent);
-
-      updateLampFromZ(recentZ);
-      setStatus('Running…');
-    }catch(e){
-      setStatus('Load failed — retrying…');
-    }
-  }
-
-  async function loop(){
-    while(running){
-      await tick();
-      await new Promise(r=> setTimeout(r, 1000));
-    }
-  }
-
-  // =============== Controls ===============
-  // Settings toggle
-  const settingsPanel = document.getElementById('settingsPanel');
-  const toggleBtn = document.getElementById('toggleSettings');
-  toggleBtn.addEventListener('click', ()=>{
-    const open = settingsPanel.style.display === 'block';
-    settingsPanel.style.display = open ? 'none' : 'block';
-    toggleBtn.textContent = open ? 'Show settings' : 'Hide settings';
-  });
-
-  // Mode selector (default 'continuous')
-  const modeSel = document.getElementById('mode');
-  modeSel.value = 'continuous';
-  modeSel.addEventListener('change', (e)=>{
-    Engine.mode = e.target.value;
-  });
-  Engine.mode = 'continuous';
-
-  // Sensitivity slider (0..1 => gain 0.5..8), default 0.7
-  const gainEl = document.getElementById('gain');
-  gainEl.value = '0.7';
-  const mapGain = v => 0.5 + parseFloat(v)*7.5;
-  Engine.gain = mapGain(gainEl.value);
-  gainEl.addEventListener('input', (e)=>{
-    Engine.gain = mapGain(e.target.value||'0.7');
-  });
-
-  // Window select (default 15)
-  const winEl = document.getElementById('win');
-  winEl.value = '15';
-  Engine.win = parseInt(winEl.value,10);
-  winEl.addEventListener('change', (e)=>{
-    Engine.win = parseInt(e.target.value||'15',10);
-    while(Engine.recent.length > Engine.win) Engine.recent.shift();
-  });
-
-  // Influence selector (default off)
-  const inflEl = document.getElementById('influence');
-  inflEl.value = 'off';
-  Engine.influence = inflEl.value;
-  inflEl.addEventListener('change', (e)=>{
-    Engine.influence = e.target.value;
-  });
-
-  // Target color selection (kept visible)
-  const targets = Array.from(document.querySelectorAll('.target'));
-  targets.forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      targets.forEach(b=> b.classList.remove('active'));
-      btn.classList.add('active');
-      Engine.target = btn.dataset.hex || '';
-    });
-  });
-
-  // Fullscreen toggle for lamp area
-  document.getElementById('fullscreenBtn').addEventListener('click', async ()=>{
-    const box = document.querySelector('.fsWrap');
-    const isFs = document.fullscreenElement != null;
-    try{
-      if (!isFs) {
-        await box.requestFullscreen();
-        document.getElementById('fullscreenBtn').textContent = 'Exit Fullscreen';
-      } else {
-        await document.exitFullscreen();
-        document.getElementById('fullscreenBtn').textContent = 'Fullscreen';
-      }
-    }catch(e){ /* ignore */ }
-  });
-
-  const startBtn = document.getElementById('startBtn');
-  const stopBtn  = document.getElementById('stopBtn');
-  startBtn.addEventListener('click', ()=>{
-    if(running) return;
-    running=true;
-    startBtn.disabled=true; stopBtn.disabled=false;
-    setStatus('Running…');
-    startTimer();
-    loop();
-  });
-  stopBtn.addEventListener('click', ()=>{
-    running=false;
-    startBtn.disabled=false; stopBtn.disabled=true;
-    stopTimer();
-    setStatus('Stopped');
-  });
-
-  // Prime lamp with a calm color
-  setLamp('#0a1025');
+  QRNG.statusEl=document.getElementById('statusPill'); QRNG.entropyEl=document.getElementById('entropyFill'); QRNG.topUp(4096).then(()=> renderOnce());
   </script>
 </body>
 </html>
