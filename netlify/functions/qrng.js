@@ -1,7 +1,7 @@
 
 // Netlify Function: QRNG proxy with fallbacks
 export async function handler(event, context) {
-  const len = Math.max(1, Math.min(2048, parseInt((event.queryStringParameters || {}).len || "64", 10)));
+  const len = Math.max(1, Math.min(8192, parseInt((event.queryStringParameters || {}).len || "2048", 10)));
   let data = null;
   try {
     const r = await fetch(`https://api.quantumnumbers.anu.edu.au/random?length=${len}&type=uint16`);
