@@ -1,6 +1,5 @@
 
 // Netlify Function: QRNG proxy with fallbacks
-// Attempts: ANU modern API, then ANU legacy, returns { data: [uint16,...] }
 export async function handler(event, context) {
   const len = Math.max(1, Math.min(2048, parseInt((event.queryStringParameters || {}).len || "64", 10)));
   let data = null;
