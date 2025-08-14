@@ -4,16 +4,15 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Color Coherence Lamp</title>
+  <title>Color Coherence Lamp — MindLamp</title>
   <meta name="theme-color" content="#38bdf8"/>
   <style>
     :root{
-      --bg:#0b0f1a; --panel:#121936; --ink:#eaf2ff; --muted:#9bb0d7; --accent:#38bdf8;
-      --border:#263259;
+      --bg:#0b0f1a; --panel:#121936; --ink:#eaf2ff; --muted:#9bb0d7; --accent:#38bdf8; --border:#263259;
     }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-    .wrap{max-width:860px;margin:0 auto;padding:20px 16px 44px}
+    .wrap{max-width:900px;margin:0 auto;padding:20px 16px 44px}
     header{padding:10px 0 16px;text-align:center}
     h1{margin:0;font-size:22px;letter-spacing:.3px}
     .subtitle{color:var(--muted);font-size:13px;margin-top:6px}
@@ -21,23 +20,34 @@
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
     button{background:linear-gradient(180deg,#38bdf8,#0ea5e9);border:none;color:#00111a;border-radius:12px;
       padding:12px 18px;font-weight:800;cursor:pointer;font-size:16px}
+    button.ghost{background:#0f1735;color:#cfe3ff;border:1px solid var(--border)}
     button:disabled{opacity:.6;cursor:not-allowed}
     .lamp{width:100%;aspect-ratio: 3/2;border-radius:18px;border:1px solid var(--border);
       background:#0a1025;box-shadow:0 20px 80px rgba(0,0,0,.35) inset, 0 10px 30px rgba(56,189,248,.18);
-      transition: background 220ms ease, box-shadow 220ms ease, transform 160ms ease}
+      transition: background 200ms ease, box-shadow 200ms ease, transform 160ms ease}
     .lamp:hover{transform: translateY(-1px)}
     .rowinfo{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:10px}
     .pill{display:inline-block;border:1px solid var(--border);background:#0f1735;color:#cfe3ff;
       padding:8px 12px;border-radius:999px;font-size:12px}
     .muted{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
-    .tiny{font-size:11px;color:#a8b7dc;text-align:center}
+    .ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin:12px 0}
+    select,input[type="range"]{background:#0e1020;border:1px solid var(--border);color:#e8ecff;border-radius:10px;padding:8px 10px}
+    .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:#0f1735;color:#cfe3ff;font-size:12px}
+    .dot{width:12px;height:12px;border-radius:999px;border:1px solid var(--border)}
+    .fsWrap{position:relative}
+    .fsBtn{position:absolute;right:12px;top:12px}
+    .targets{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;margin:8px 0}
+    .target{cursor:pointer; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background:#0f1735; color:#cfe3ff; font-size:12px}
+    .target.active{outline:2px solid #38bdf8}
+    .settingsToggle{display:flex;justify-content:center;margin-top:10px}
+    .settingsPanel{display:none}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <h1>Color Coherence Lamp</h1>
-      <div class="subtitle">Use focus to nudge a quantum RNG — watch the color respond</div>
+      <div class="subtitle">PEAR-style feedback: recent RNG drift nudges the color</div>
     </header>
 
     <div class="card">
@@ -45,20 +55,65 @@
         <button id="startBtn">Start</button>
         <button id="stopBtn" disabled>End</button>
       </div>
-      <div class="lamp" id="lamp"></div>
+
+      <div class="fsWrap">
+        <div class="lamp" id="lamp"></div>
+        <button id="fullscreenBtn" class="fsBtn ghost">Fullscreen</button>
+      </div>
+
+      <!-- Target controls stay visible for demos -->
+      <div id="targetRow" class="targets">
+        <span class="pill">Target color</span>
+        <button class="target" data-hex="#FFFFFF" style="background:#ffffff;color:#111">White</button>
+        <button class="target" data-hex="#FF0000" style="background:#ff0000">Red</button>
+        <button class="target" data-hex="#FF7A00" style="background:#ff7a00">Orange</button>
+        <button class="target" data-hex="#FFD400" style="background:#ffd400;color:#111">Yellow</button>
+        <button class="target" data-hex="#00C853" style="background:#00c853">Green</button>
+        <button class="target" data-hex="#00E5FF" style="background:#00e5ff;color:#111">Cyan</button>
+        <button class="target" data-hex="#2962FF" style="background:#2962ff">Blue</button>
+        <button class="target" data-hex="#7B1FA2" style="background:#7b1fa2">Purple</button>
+        <button class="target" data-hex="#FF00AA" style="background:#ff00aa">Magenta</button>
+        <button class="target" data-hex="" id="clearTarget">Clear</button>
+      </div>
+
+      <!-- Settings panel (hidden by default) -->
+      <div class="settingsToggle">
+        <button id="toggleSettings" class="ghost">Show settings</button>
+      </div>
+      <div id="settingsPanel" class="settingsPanel">
+        <div class="ctl">
+          <span class="pill">Mode</span>
+          <select id="mode">
+            <option value="discrete">MindLamp (Discrete colors)</option>
+            <option value="continuous" selected>Rainbow (Continuous)</option>
+          </select>
+
+          <span class="pill">Sensitivity</span>
+          <!-- slider 0..1 mapped internally to gain 0.5..8 -->
+          <input id="gain" type="range" min="0" max="1" step="0.05" value="0.7"/>
+
+          <span class="pill">Recent window</span>
+          <select id="win">
+            <option value="10">10</option>
+            <option value="15" selected>15</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+      </div>
+
       <div class="rowinfo">
         <span class="pill" id="status">Idle</span>
         <span class="pill" id="elapsed">Elapsed 00:00</span>
-        <span class="pill" id="modePill">Mode: Recent Z</span>
-        <span class="pill" id="colorHex">#000000</span>
+        <span class="pill" id="readout">Recent Z —</span>
+        <span class="pill" id="hex">#000000</span>
       </div>
-      <div class="muted">Color maps to recent Z‑drift (last 15 tests) — sensitive, smooth, not reliant on extreme Z.</div>
-      <div class="tiny">Tip: Soften your gaze; breathe together; hold a gentle intention and notice shifts.</div>
+
+      <div class="muted">Defaults for events: Continuous mode, sensitivity 0.7, window 15. Open “Settings” to tweak. Pick a target color anytime.</div>
     </div>
   </div>
 
   <script>
-  // =============== Helpers ===============
+  // =============== Math helpers ===============
   function erf(x){const s=x>=0?1:-1; x=Math.abs(x); const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911; const t=1/(1+p*x); const y=1-((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x); return s*y;}
   function cdfNormal(z){return .5*(1+erf(z/Math.SQRT2));}
   function stoufferZ(zs){if(!zs.length) return 0; const s=zs.reduce((a,b)=>a+b,0); return s/Math.sqrt(zs.length);}
@@ -84,36 +139,25 @@
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
   }
 
-  // =============== Lamp mapping (responsive rainbow) ===============
-  const LAMP = {
-    ema: 0, hasEma:false,
-    smooth: 0.75,   // smoothing (0 = instant, 0.95 = floaty)
-    gain: 3.0,      // sensitivity so small Z moves color
-    t: 0,           // breathing motion
-    recent: [],     // window of per-trial z
-    win: 15,        // window size
-  };
-  function updateLamp(score){
-    // Smooth + breathe
-    if(!LAMP.hasEma){ LAMP.ema = score; LAMP.hasEma=true; }
-    LAMP.ema = LAMP.smooth * LAMP.ema + (1 - LAMP.smooth) * score;
-    LAMP.t += 0.012;
-    const felt = LAMP.ema + 0.05*Math.sin(LAMP.t);
-
-    // Boost small moves, cap big ones
-    const x = Math.tanh(LAMP.gain * felt); // -1..1
-    // Map -1..1 to a full rainbow sweep (0..360)
-    const hue = ((x+1)/2) * 360; // 0..360
-    const sat = 80;
-    const light = 55;
-
-    const el = document.getElementById('lamp');
-    el.style.background = hsl(hue, sat, light);
-    el.style.boxShadow = `0 20px 80px rgba(0,0,0,.35) inset, 0 10px 30px hsla(${Math.round(hue)},80%,50%,.25)`;
-    document.getElementById('colorHex').textContent = hslToHex(hue/360, sat/100, light/100);
+  function hexToRgb(hex){
+    const h = hex.replace('#','');
+    const bigint = parseInt(h, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return {r,g,b};
+  }
+  function rgbToHex(r,g,b){
+    const to = v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0');
+    return '#' + to(r) + to(g) + to(b);
+  }
+  function blendHex(a,b,t){
+    const ra=hexToRgb(a), rb=hexToRgb(b);
+    const r=ra.r + (rb.r-ra.r)*t, g=ra.g + (rb.g-ra.g)*t, b2=ra.b + (rb.b-ra.b)*t;
+    return rgbToHex(r,g,b2).toUpperCase();
   }
 
-  // =============== QRNG (with fallback) ===============
+  // =============== QRNG with fallback ===============
   async function qrng(len){
     try{
       const r = await fetch(`/.netlify/functions/qrng?len=${len}`, {mode:'cors'});
@@ -123,11 +167,82 @@
       if(arr.length) return new Uint16Array(arr.map(x=>x & 0xFFFF));
       throw new Error('qrng empty');
     }catch(e){
-      // Fallback: secure local RNG
       const u16 = new Uint16Array(len);
       crypto.getRandomValues(u16);
       return u16;
     }
+  }
+
+  // =============== Engine ===============
+  const Engine = {
+    recent: [], ema:0, hasEma:false, t:0,
+    // Defaults for events:
+    win: 15,                // window 15
+    gain: 0.5 + 0.7 * 7.5,  // map slider(0..1=0.7) -> gain in [0.5..8] => 5.75
+    mode: 'continuous',     // default continuous
+    palette: [
+      '#FFFFFF', '#FF0000', '#FF7A00', '#FFD400',
+      '#00C853', '#00E5FF', '#2962FF', '#7B1FA2', '#FF00AA'
+    ],
+    target: '' // hex or ''
+  };
+
+  function setLamp(hex){
+    const el = document.getElementById('lamp');
+    el.style.background = hex;
+    el.style.boxShadow = `0 20px 80px rgba(0,0,0,.35) inset, 0 10px 30px rgba(255,255,255,.15)`;
+    document.getElementById('hex').textContent = hex.toUpperCase();
+  }
+
+  function hueFromHex(hex){
+    const {r,g,b} = hexToRgb(hex);
+    const R=r/255, G=g/255, B=b/255;
+    const max = Math.max(R,G,B), min = Math.min(R,G,B);
+    let h=0, d=max-min;
+    if (d===0) h=0;
+    else if (max===R) h=( (G-B)/d )%6;
+    else if (max===G) h=( (B-R)/d )+2;
+    else h=( (R-G)/d )+4;
+    h = Math.round(h*60); if (h<0) h+=360;
+    return h;
+  }
+
+  function continuousColor(zRecent){
+    const x = Math.tanh(Engine.gain * zRecent);
+    let hue = ((x+1)/2)*360;
+    if (Engine.target){
+      const th = hueFromHex(Engine.target);
+      const diff = ((th - hue + 540)%360) - 180;
+      hue += 0.12 * diff; // ~12% nudge per update
+    }
+    const sat = 80, light=55;
+    return hslToHex(hue/360, sat/100, light/100);
+  }
+
+  function discreteColor(zRecent){
+    const x = Math.tanh(Engine.gain * zRecent);
+    const t = (x+1)/2;
+    const N = Engine.palette.length;
+    const idx = t * N;
+    const i0 = Math.floor(idx) % N;
+    const i1 = (i0 + 1) % N;
+    const frac = idx - Math.floor(idx);
+    let c = blendHex(Engine.palette[i0], Engine.palette[i1], frac);
+    if (Engine.target){
+      c = blendHex(c, Engine.target, 0.25); // 25% pull toward target
+    }
+    return c;
+  }
+
+  function updateLampFromZ(zRecent){
+    if(!Engine.hasEma){ Engine.ema = zRecent; Engine.hasEma = true; }
+    Engine.ema = 0.75*Engine.ema + 0.25*zRecent;
+    Engine.t += 0.012;
+    const felt = Engine.ema + 0.04*Math.sin(Engine.t);
+
+    const hex = (Engine.mode==='discrete') ? discreteColor(felt) : continuousColor(felt);
+    setLamp(hex);
+    document.getElementById('readout').textContent = `Recent Z ≈ ${zRecent.toFixed(2)} • p≈${twoSidedP(zRecent).toExponential(2)}`;
   }
 
   // =============== Session loop ===============
@@ -150,25 +265,22 @@
 
   async function tick(){
     try{
-      // one "trial": pull enough 16-bit words to cover N bits
-      const bitsPerTrial = 200; // small, frequent
+      const bitsPerTrial = 200;
       const words = Math.ceil(bitsPerTrial/16);
       const u16 = await qrng(words);
-      // convert to bits
       const bits = [];
       for(let i=0;i<u16.length;i++){ let v=u16[i]; for(let b=0;b<16;b++){ bits.push((v>>b)&1); } }
-      const trial = bits.slice(0, bitsPerTrial);
+      const trial = bits.slice(0,bitsPerTrial);
       const sum = trial.reduce((a,b)=>a+b,0);
       const n = bitsPerTrial, mu=n/2, sigma=Math.sqrt(n/4);
-      const z = (sum - mu)/sigma;  // per-trial z
+      const z = (sum - mu)/sigma;
 
-      // keep recent window, compute responsive score
-      LAMP.recent.push(z);
-      while(LAMP.recent.length > LAMP.win) LAMP.recent.shift();
-      const recentZ = stoufferZ(LAMP.recent);
+      Engine.recent.push(z);
+      while(Engine.recent.length > Engine.win) Engine.recent.shift();
+      const recentZ = stoufferZ(Engine.recent);
 
-      updateLamp(recentZ);
-      setStatus(`Recent Z ≈ ${recentZ.toFixed(2)} • p≈${twoSidedP(recentZ).toExponential(2)}`);
+      updateLampFromZ(recentZ);
+      setStatus('Running…');
     }catch(e){
       setStatus('Load failed — retrying…');
     }
@@ -177,11 +289,71 @@
   async function loop(){
     while(running){
       await tick();
-      await new Promise(r=> setTimeout(r, 1000)); // 1s cadence
+      await new Promise(r=> setTimeout(r, 1000));
     }
   }
 
-  // =============== Buttons ===============
+  // =============== Controls ===============
+  // Settings toggle
+  const settingsPanel = document.getElementById('settingsPanel');
+  const toggleBtn = document.getElementById('toggleSettings');
+  toggleBtn.addEventListener('click', ()=>{
+    const open = settingsPanel.style.display === 'block';
+    settingsPanel.style.display = open ? 'none' : 'block';
+    toggleBtn.textContent = open ? 'Show settings' : 'Hide settings';
+  });
+
+  // Mode selector (default 'continuous')
+  const modeSel = document.getElementById('mode');
+  modeSel.value = 'continuous';
+  modeSel.addEventListener('change', (e)=>{
+    Engine.mode = e.target.value;
+  });
+  Engine.mode = 'continuous';
+
+  // Sensitivity slider (0..1 => gain 0.5..8), default 0.7
+  const gainEl = document.getElementById('gain');
+  gainEl.value = '0.7';
+  const mapGain = v => 0.5 + parseFloat(v)*7.5;
+  Engine.gain = mapGain(gainEl.value);
+  gainEl.addEventListener('input', (e)=>{
+    Engine.gain = mapGain(e.target.value||'0.7');
+  });
+
+  // Window select (default 15)
+  const winEl = document.getElementById('win');
+  winEl.value = '15';
+  Engine.win = parseInt(winEl.value,10);
+  winEl.addEventListener('change', (e)=>{
+    Engine.win = parseInt(e.target.value||'15',10);
+    while(Engine.recent.length > Engine.win) Engine.recent.shift();
+  });
+
+  // Target color selection (kept visible)
+  const targets = Array.from(document.querySelectorAll('.target'));
+  targets.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      targets.forEach(b=> b.classList.remove('active'));
+      btn.classList.add('active');
+      Engine.target = btn.dataset.hex || '';
+    });
+  });
+
+  // Fullscreen toggle for lamp area
+  document.getElementById('fullscreenBtn').addEventListener('click', async ()=>{
+    const box = document.querySelector('.fsWrap');
+    const isFs = document.fullscreenElement != null;
+    try{
+      if (!isFs) {
+        await box.requestFullscreen();
+        document.getElementById('fullscreenBtn').textContent = 'Exit Fullscreen';
+      } else {
+        await document.exitFullscreen();
+        document.getElementById('fullscreenBtn').textContent = 'Fullscreen';
+      }
+    }catch(e){ /* ignore */ }
+  });
+
   const startBtn = document.getElementById('startBtn');
   const stopBtn  = document.getElementById('stopBtn');
   startBtn.addEventListener('click', ()=>{
@@ -199,8 +371,8 @@
     setStatus('Stopped');
   });
 
-  // Prime a calm color
-  updateLamp(0);
+  // Prime lamp with a calm color
+  setLamp('#0a1025');
   </script>
 </body>
 </html>
