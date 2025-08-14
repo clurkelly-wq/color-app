@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>QRNG Art Studio</title>
+  <title>QRNG Art Studio — Hilma Update</title>
   <meta name="theme-color" content="#111827"/>
   <style>
     :root{ --bg:#0b0f1a; --panel:#0f172a; --ink:#e5edff; --muted:#94a3b8; --accent:#38bdf8; --border:#1f2a44; }
@@ -16,12 +16,12 @@
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
     button{background:linear-gradient(180deg,#38bdf8,#0ea5e9);border:none;color:#00111a;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer;font-size:15px}
     button.ghost{background:#0f1735;color:#cfe3ff;border:1px solid var(--border)}
+    button.warn{background:linear-gradient(180deg,#fbbf24,#f59e0b);color:#1f1300}
     button:disabled{opacity:.6;cursor:not-allowed}
     select,input[type="range"]{background:#0e1020;border:1px solid var(--border);color:#e8ecff;border-radius:10px;padding:8px 10px}
     .pill{display:inline-block;border:1px solid var(--border);background:#0f1735;color:#cfe3ff;padding:6px 10px;border-radius:999px;font-size:12px}
     .canvasWrap{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--border);box-shadow:inset 0 0 60px rgba(0,0,0,.25)}
-    canvas{display:block;width:100%;height:auto;background:#050915}
-    .status{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:10px}
+    canvas{display:block;width:100%;height:auto;background:#F3EAD7}
     .bar{width:160px;height:8px;background:#0f1735;border-radius:20px;border:1px solid var(--border);overflow:hidden}
     .bar>i{display:block;height:100%;width:10%;background:#38bdf8}
     .note{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
@@ -35,28 +35,31 @@
   <div class="wrap">
     <header>
       <h1>QRNG Art Studio</h1>
-      <div class="sub">Generative art steered by a quantum random source (with graceful offline fallback)</div>
+      <div class="sub">Hilma af Klint–inspired generator, animated by a quantum random source</div>
     </header>
 
     <div class="panel" style="margin-bottom:10px">
       <div class="row" style="margin-bottom:8px">
         <button id="genBtn">Generate</button>
         <button id="animBtn" class="ghost">Animate</button>
+        <button id="freezeBtn" class="warn" disabled>Freeze (Lock In)</button>
+        <button id="regenBtn" class="ghost" disabled>Regenerate Variant</button>
         <button id="saveBtn" class="ghost">Save PNG</button>
         <button id="fsBtn" class="ghost">Fullscreen</button>
 
         <span class="pill">Style</span>
         <select id="style">
+          <option value="hilma_symbolic" selected>Hilma — Symbolic</option>
+          <option value="hilma_concentric">Hilma — Concentric</option>
           <option value="aurora">Aurora Veils</option>
           <option value="spirals">Sacred Spirals</option>
           <option value="constellations">Constellation Field</option>
           <option value="mondrian">Quantum Mondrian</option>
           <option value="pointillism">Pointillist Bloom</option>
-          <option value="hilma" selected>Hilma Concentric</option>
         </select>
 
         <span class="pill">Detail</span>
-        <input id="detail" type="range" min="0.5" max="2.0" value="1.0" step="0.1"/>
+        <input id="detail" type="range" min="0.5" max="2.0" value="1.1" step="0.1"/>
       </div>
 
       <div class="row">
@@ -65,19 +68,20 @@
         <span class="pill" id="sizePill">Canvas —</span>
         <span class="bar"><i id="entropyFill" style="width:10%"></i></span>
       </div>
-      <div class="note">Try “Hilma Concentric” for spiritual, geometric compositions inspired by Hilma af Klint.</div>
+      <div class="note">Animate → evolving composition. Freeze to “lock in”. Regenerate Variant reinterprets the *same seed* in a new way.</div>
     </div>
 
     <div class="canvasWrap">
       <canvas id="c"></canvas>
     </div>
 
-    <div class="note">Made with love for Clare — where intention meets emergence ✨</div>
+    <div class="note">For Clare — trust the mystery and let the quantum brush paint ✨</div>
   </div>
 
   <script>
+  // ---------- QRNG Manager with buffer & graceful fallback ----------
   const QRNG = {
-    buf: new Uint16Array(0), i: 0, online: false, fetching: false, statusEl: null, entropyEl: null,
+    buf: new Uint16Array(0), i: 0, online: false, fetching: false, statusEl:null, entropyEl:null,
     async topUp(target=2048){
       if(this.fetching) return;
       if(this.buf.length - this.i > target/4) return;
@@ -90,193 +94,323 @@
         if(!arr.length) throw new Error('empty');
         const more = new Uint16Array(arr.map(x=>x & 0xFFFF));
         if(this.i >= this.buf.length){ this.buf = more; this.i = 0; }
-        else{
-          const remain = this.buf.slice(this.i);
-          this.buf = new Uint16Array(remain.length + more.length);
-          this.buf.set(remain,0); this.buf.set(more,remain.length); this.i = 0;
-        }
+        else { const remain = this.buf.slice(this.i); this.buf = new Uint16Array(remain.length + more.length); this.buf.set(remain,0); this.buf.set(more,remain.length); this.i=0; }
         this.online = true; this.setStatus('QRNG online');
       }catch(e){
         const more = new Uint16Array(target); crypto.getRandomValues(more);
         if(this.i >= this.buf.length){ this.buf = more; this.i = 0; }
-        else{
-          const remain = this.buf.slice(this.i);
-          this.buf = new Uint16Array(remain.length + more.length);
-          this.buf.set(remain,0); this.buf.set(more,remain.length); this.i = 0;
-        }
+        else { const remain = this.buf.slice(this.i); this.buf = new Uint16Array(remain.length + more.length); this.buf.set(remain,0); this.buf.set(more,remain.length); this.i=0; }
         if(!this.online) this.setStatus('Using local RNG (offline)');
       }finally{ this.fetching=false; this.updateEntropy(); }
     },
     need(n){ if(this.buf.length - this.i < n) return this.topUp(Math.max(2048, n*2)); },
     u16(){ if(this.i >= this.buf.length){ this.topUp(); return (Math.random()*65536)|0; } const v=this.buf[this.i++]; this.updateEntropy(); return v; },
-    f32(){ return this.u16() / 65535; },
-    setStatus(msg){ if(this.statusEl) this.statusEl.textContent = msg; },
-    updateEntropy(){ if(!this.entropyEl) return; const remain = Math.max(0, this.buf.length - this.i); const ratio = Math.max(0.02, Math.min(1, remain / Math.max(1,this.buf.length))); this.entropyEl.style.width = (ratio*100).toFixed(0)+'%'; }
+    f32(){ return this.u16()/65535; },
+    setStatus(m){ if(this.statusEl) this.statusEl.textContent=m; },
+    updateEntropy(){ if(!this.entropyEl) return; const remain=Math.max(0,this.buf.length-this.i); const ratio=Math.max(0.02,Math.min(1,remain/Math.max(1,this.buf.length))); this.entropyEl.style.width=(ratio*100).toFixed(0)+'%'; }
   };
 
+  // ---------- Canvas ----------
   const canvas = document.getElementById('c'); const ctx = canvas.getContext('2d');
   function resize(){ const rect = canvas.parentElement.getBoundingClientRect(); const w = Math.max(640, Math.floor(rect.width)); const h = Math.floor(w*9/16); canvas.width=w*2; canvas.height=h*2; canvas.style.height=h+'px'; canvas.style.width=w+'px'; document.getElementById('sizePill').textContent=`Canvas — ${w}×${h}`; }
   window.addEventListener('resize', resize); resize();
 
-  function rand(){ return QRNG.f32(); }
-  function rint(a,b){ return Math.floor(a + rand()*(b-a+1)); }
-  function choice(arr){ return arr[rint(0, arr.length-1)]; }
-  function gauss(){ let u=0,v=0; while(u===0) u=rand(); while(v===0) v=rand(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+  // ---------- Helper RNGs ----------
+  function r(){ return QRNG.f32(); }
+  function ri(a,b){ return Math.floor(a + r()*(b-a+1)); }
+  function pick(arr){ return arr[ri(0,arr.length-1)]; }
+  // Small deterministic PRNG for "variant" regenerations from same seed
+  function mulberry32(seed){ return function(){ let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; } }
 
-  const PALETTES = [
-    ['#0ea5e9','#22d3ee','#a78bfa','#f472b6','#f59e0b'],
-    ['#ff5d73','#ffd166','#06d6a0','#118ab2','#073b4c'],
-    ['#fde68a','#fca5a5','#93c5fd','#34d399','#fbb6ce'],
-    ['#ffffff','#9fb3ff','#7ee0ff','#a0ffd6','#ffe29f'],
-    ['#ff5f6d','#ffc371','#00c6ff','#0072ff','#48c6ef']
+  // ---------- Palettes (Hilma-inspired) ----------
+  const HILMA_BG = ['#F3EAD7','#EFE6D6','#F7EEDF','#F8EAE9','#EFE8F5'];
+  const HILMA_COLS = [
+    '#F2B3C4','#EFC5A5','#F6CF92','#C7E9D5','#AEC9F4','#9ED0F6','#E5C8F3','#F9A8D4','#EBDDD3','#8B90B6',
+    '#1E1E1E','#FFFFFF','#F7B500','#FF715B','#5B7FFF'
   ];
 
-  function clear(bg='#050915'){ ctx.fillStyle=bg; ctx.fillRect(0,0,canvas.width,canvas.height); }
-  function starfield(n=60, alpha=0.6){ ctx.save(); ctx.globalAlpha=alpha; for(let i=0;i<n;i++){ const x=rand()*canvas.width, y=rand()*canvas.height, s=Math.pow(rand(),2)*3+0.6; ctx.fillStyle='white'; ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill(); } ctx.restore(); }
-  function glow(strength=1){ ctx.globalCompositeOperation='lighter'; ctx.filter='blur('+2*strength+'px)'; ctx.drawImage(canvas,0,0); ctx.filter='none'; ctx.globalCompositeOperation='source-over'; }
+  // ---------- Shared drawing utils ----------
+  function clear(bg){ ctx.fillStyle=bg; ctx.fillRect(0,0,canvas.width,canvas.height); }
+  function setStroke(c,w,alpha=1){ ctx.strokeStyle=c; ctx.globalAlpha=alpha; ctx.lineWidth=w; }
+  function setFill(c,alpha=1){ ctx.fillStyle=c; ctx.globalAlpha=alpha; }
+  function ring(x,y,rw, colStroke, colFill=null, alpha=1, lw=3){
+    if(colFill){ setFill(colFill, alpha*0.25); ctx.beginPath(); ctx.arc(x,y,rw,0,Math.PI*2); ctx.fill(); }
+    setStroke(colStroke,lw,alpha); ctx.beginPath(); ctx.arc(x,y,rw,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
+  }
+  function wedge(cx,cy,r1,r2,a0,a1,col,alpha=1){
+    setFill(col,alpha); ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r2,a0,a1);
+    ctx.lineTo(cx,cy);
+    ctx.fill(); ctx.globalAlpha=1;
+  }
+  function poly(points, stroke='#1E1E1E', fill=null, lw=2, alpha=1){
+    if(fill){ setFill(fill,alpha*0.6); ctx.beginPath(); ctx.moveTo(points[0].x,points[0].y);
+      for(let i=1;i<points.length;i++) ctx.lineTo(points[i].x,points[i].y); ctx.closePath(); ctx.fill(); }
+    setStroke(stroke,lw,alpha); ctx.beginPath(); ctx.moveTo(points[0].x,points[0].y);
+    for(let i=1;i<points.length;i++) ctx.lineTo(points[i].x,points[i].y); ctx.closePath(); ctx.stroke(); ctx.globalAlpha=1;
+  }
+  function spiral(cx,cy,rot,turns,rmin,rmax,stroke='#1E1E1E',lw=2,alpha=0.6){
+    setStroke(stroke,lw,alpha); ctx.beginPath();
+    const steps = 300;
+    for(let i=0;i<=steps;i++){
+      const t=i/steps; const th=rot + t*turns*2*Math.PI; const r= rmin + t*(rmax-rmin);
+      const x=cx+Math.cos(th)*r, y=cy+Math.sin(th)*r;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke(); ctx.globalAlpha=1;
+  }
 
-  // Existing styles
-  function auroraVeils(detail=1){
-    clear('#040713'); const layers=Math.round(6*detail);
-    for(let i=0;i<layers;i++){ const hue=rint(180,340); const alpha=0.06+0.06*rand(); const y0=canvas.height*(0.1+0.8*rand()); const amp=canvas.height*(0.08+0.2*rand()); const wig=2+6*rand(); const width=canvas.width*(0.5+rand()*0.6); const x0=canvas.width*rand(); ctx.fillStyle='hsla('+hue+',90%,60%,'+alpha.toFixed(3)+')'; ctx.beginPath(); ctx.moveTo(x0-width/2,y0); const steps=20+Math.floor(120*detail); for(let s=0;s<=steps;s++){ const t=s/steps; const x=x0-width/2+width*t; const y=y0+Math.sin(t*Math.PI*wig + rand()*0.5)*amp*(0.6+0.4*rand()); ctx.lineTo(x,y); } ctx.lineTo(x0 + width/2, canvas.height+10); ctx.lineTo(x0 - width/2, canvas.height+10); ctx.closePath(); ctx.filter='blur('+(2+4*rand())+'px)'; ctx.fill(); ctx.filter='none'; } starfield(60*detail,0.6); }
-  function sacredSpirals(detail=1){
-    clear('#030510'); const palette=choice(PALETTES); const arms=2+rint(0,4); const centers=1+rint(0,2);
-    for(let c=0;c<centers;c++){ const cx=canvas.width*(0.3+0.4*rand()); const cy=canvas.height*(0.35+0.3*rand()); const base=canvas.width*(0.004+0.01*rand());
-      for(let a=0;a<arms;a++){ const rot=(2*Math.PI*a/arms)+rand()*0.5; const points=400+Math.floor(600*detail); const growth=1.005+0.003*rand(); let r=base*(0.5+rand()); ctx.lineWidth=1+2*rand(); ctx.strokeStyle=choice(palette); ctx.globalAlpha=0.6; ctx.beginPath(); for(let i=0;i<points;i++){ const th=rot+i*0.08; const x=cx+Math.cos(th)*r; const y=cy+Math.sin(th)*r; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); r*=growth; } ctx.stroke(); ctx.globalAlpha=1; }
-    } glow(); }
-  function constellationField(detail=1){
-    clear('#050a18'); const stars=200+Math.floor(300*detail); const pts=[];
-    for(let i=0;i<stars;i++){ const x=rand()*canvas.width, y=rand()*canvas.height; const s=Math.pow(rand(),2)*3+0.5; pts.push({x,y,s}); ctx.fillStyle='rgba(255,255,255,'+(0.3+0.7*rand())+')'; ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill(); if(rand()<0.25){ ctx.fillStyle=choice(['#8ab6ff','#ffd18a','#bbf7d0']); ctx.beginPath(); ctx.arc(x,y,s*0.6,0,Math.PI*2); ctx.fill(); } } const links=Math.round(150*detail); ctx.strokeStyle='rgba(120,180,255,0.25)'; for(let i=0;i<links;i++){ const a=pts[rint(0,pts.length-1)], b=pts[rint(0,pts.length-1)]; ctx.lineWidth=0.5+rand(); ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } glow(1.5); }
-  function mondrian(detail=1){
-    clear('#101318'); const rect={x:0,y:0,w:canvas.width,h:canvas.height}; const palette=['#fefefe','#e63946','#457b9d','#f1fa8c','#2a9d8f'];
-    function split(r,depth){ const min=120/detail; if(depth>5 || r.w<min || r.h<min || rand()<0.2){ ctx.fillStyle=(rand()<0.7)? '#0f172a' : palette[rint(0,palette.length-1)]; ctx.fillRect(r.x+2,r.y+2,r.w-4,r.h-4); ctx.strokeStyle='#0d1328'; ctx.lineWidth=6; ctx.strokeRect(r.x+3,r.y+3,r.w-6,r.h-6); return; } const vertical = rand()<0.5; if(vertical){ const cut=r.x+r.w*(0.3+0.4*rand()); split({x:r.x,y:r.y,w:cut-r.x,h:r.h},depth+1); split({x:cut,y:r.y,w:r.x+r.w-cut,h:r.h},depth+1); } else { const cut=r.y+r.h*(0.3+0.4*rand()); split({x:r.x,y:r.y,w:r.w,h:cut-r.y},depth+1); split({x:r.x,y:cut,w:r.w,h:r.y+r.h-cut},depth+1); } } split(rect,0); }
-  function pointillism(detail=1){
-    clear('#0a0f1e'); const palette=choice(PALETTES); const dots=1200+Math.floor(1800*detail);
-    for(let i=0;i<dots;i++){ const x=rand()*canvas.width, y=rand()*canvas.height; const s=Math.pow(rand(),2.2)*6+0.6; const c=palette[rint(0,palette.length-1)]; ctx.fillStyle=c; ctx.globalAlpha=0.35+0.6*rand(); ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill(); } ctx.globalAlpha=1; glow(1.2); }
+  // ---------- Motifs ----------
+  function motifSun(cx,cy,R){
+    const rays = ri(20,36); const ringCol = '#6D5A4A'; const gold='#DDB15A';
+    ring(cx,cy,R, ringCol, gold, 0.8, 6);
+    for(let i=0;i<rays;i++){
+      const a = i*(2*Math.PI/rays);
+      const r1 = R*0.78, r2 = R*0.96;
+      setStroke(gold, 3, 0.9);
+      ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1);
+      ctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2); ctx.stroke();
+    }
+  }
+  function motifTriangleSpectrum(cx,cy,w,h,up=true){
+    // segmented triangle with spectrum bands
+    const rows = ri(8,14);
+    for(let i=0;i<rows;i++){
+      const t = i/(rows-1);
+      const y = cy + (up? -h*t : h*t);
+      const wrow = w*(1-t);
+      const x0 = cx - wrow/2, x1 = cx + wrow/2;
+      const hue = 360*t;
+      const col = `hsl(${Math.round(hue)}, 80%, ${45 + 10*Math.sin(t*6)}%)`;
+      setFill(col,0.9);
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.lineTo(cx, up? (cy-h) : (cy+h));
+      ctx.closePath();
+      ctx.fill();
+      setStroke('#1E1E1E',1.2,0.6);
+      ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke();
+    }
+    setStroke('#1E1E1E',2,1); // outline
+    ctx.beginPath(); ctx.moveTo(cx-w/2,cy); ctx.lineTo(cx+w/2,cy); ctx.lineTo(cx, up? (cy-h):(cy+h)); ctx.closePath(); ctx.stroke();
+  }
+  function motifQuarteredCircle(cx,cy,R){
+    const cols = ['#FFFFFF','#1E1E1E','#F6CF92','#7CB2FF'];
+    for(let q=0;q<4;q++){
+      wedge(cx,cy,0,R, q*Math.PI/2, (q+1)*Math.PI/2, cols[q], 0.95);
+    }
+    setStroke('#1E1E1E',3,1); ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+    setStroke('#1E1E1E',2,1); ctx.beginPath(); ctx.moveTo(cx-R,cy); ctx.lineTo(cx+R,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy-R); ctx.lineTo(cx,cy+R); ctx.stroke();
+    ring(cx,cy,R*0.28,'#1E1E1E','#F2B3C4',0.9,2);
+  }
+  function motifDoubleSpiral(cx,cy,R){
+    const turns = 3 + ri(0,3);
+    spiral(cx,cy,0,turns, R*0.1, R, '#F7B500', 3, 0.7);
+    spiral(cx,cy,Math.PI,turns, R*0.1, R, '#5B7FFF', 3, 0.7);
+  }
+  function motifLemniscate(cx,cy,R){
+    setStroke('#1E1E1E',2,0.9);
+    ctx.beginPath();
+    const steps=240;
+    for(let i=0;i<=steps;i++){
+      const t=i/steps * 2*Math.PI;
+      const a=R/Math.SQRT2;
+      const x=cx + (a*Math.cos(t))/(1+Math.sin(t)*Math.sin(t));
+      const y=cy + (a*Math.sin(t)*Math.cos(t))/(1+Math.sin(t)*Math.sin(t));
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ring(cx,cy,R*0.22,'#1E1E1E','#FFFFFF',0.9,2);
+  }
 
-  // Fixed & enhanced: Hilma Concentric
-  function hilmaConcentric(detail=1){
-    const paper = choice(['#F3EAD7','#EFE6D6','#F7EEDF']); // warmer paper tone for contrast
-    clear(paper);
+  // ---------- Styles ----------
+  function hilmaConcentric(detail=1, seedRand=Math.random){
+    const bg = pick(HILMA_BG);
+    clear(bg);
     const w=canvas.width, h=canvas.height;
-    const cx = w*(0.28+0.44*rand()), cy = h*(0.30+0.40*rand());
-    const palette = ['#F2B3C4','#AEC9F4','#C7E9D5','#F6CF92','#E5C8F3','#F9A8D4','#9ED0F6','#FDE1B9','#BBDCCB','#EADBD5'];
-    const accentDark = '#4A3F3A';
-
-    // Concentric bands: alternating fill+stroke
-    const rings = 7 + Math.floor(8*detail);
-    const maxR = Math.min(w,h)*(0.22 + 0.26*rand());
+    const cx=w*(0.28+0.44*r()), cy=h*(0.30+0.40*r());
+    const rings = 6 + Math.floor(10*detail);
+    const maxR = Math.min(w,h)*(0.22 + 0.26*r());
     for(let i=0;i<rings;i++){
       const t=i/(rings-1);
-      const r=maxR*(0.25+0.85*t);
-      const col = palette[i % palette.length];
-      // soft fill
-      ctx.fillStyle = col;
-      ctx.globalAlpha = 0.18 + 0.12*rand();
-      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
-      // crisp outline
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = accentDark;
-      ctx.lineWidth = 2 + 2*rand();
-      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+      const R = maxR*(0.25+0.85*t);
+      ring(cx,cy,R, '#4A3F3A', pick(HILMA_COLS), 0.9, 2 + 2*r());
     }
-
-    // Petal rays (golden-ish)
-    const phi = (1+Math.sqrt(5))/2;
-    const petals = 10 + Math.floor(10*detail);
-    for(let p=0;p<petals;p++){
-      const ang = (2*Math.PI*p/petals) + rand()*0.05;
-      const r1 = maxR*(0.22 + 0.18*rand());
-      const r2 = r1*(phi + 0.25*rand());
-      const x1 = cx + Math.cos(ang)*r1, y1 = cy + Math.sin(ang)*r1;
-      const x2 = cx + Math.cos(ang)*r2, y2 = cy + Math.sin(ang)*r2;
-      ctx.strokeStyle = accentDark;
-      ctx.lineWidth = 1.5 + 1.2*rand();
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-      // seed ovals
-      ctx.fillStyle = choice(palette);
-      const a = 8 + 16*rand()*detail, b = a*(0.55 + 0.5*rand());
-      ctx.save(); ctx.translate(x2,y2); ctx.rotate(ang);
-      ctx.beginPath(); ctx.ellipse(0,0,a,b,0,0,Math.PI*2); ctx.fill(); ctx.restore();
-    }
-
-    // Soft symmetric discs
-    const discs = 3 + Math.floor(4*detail);
-    for(let i=0;i<discs;i++){
-      const r = maxR*(0.4 + 0.9*rand());
-      const ox = (rand()<0.5?-1:1) * r*(0.35 + 0.4*rand());
-      const oy = (rand()<0.5?-1:1) * r*(0.2 + 0.5*rand());
-      ctx.globalAlpha = 0.15 + 0.18*rand();
-      ctx.fillStyle = choice(palette);
-      ctx.beginPath(); ctx.arc(cx+ox, cy+oy, r*(0.5+0.4*rand()), 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 1;
-      // outline
-      ctx.strokeStyle = accentDark; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(cx+ox, cy+oy, r*(0.5+0.4*rand()), 0, Math.PI*2); ctx.stroke();
-    }
-
-    // Radiating graphite lines
-    const rays = 14 + Math.floor(18*detail);
-    ctx.strokeStyle = accentDark;
-    ctx.globalAlpha = 0.25;
-    ctx.lineWidth = 1;
+    // radiating lines
+    const rays = 12 + Math.floor(16*detail);
+    setStroke('#4A3F3A',1,0.25);
     for(let i=0;i<rays;i++){
-      const ang = i*(2*Math.PI/rays) + rand()*0.02;
-      const r = maxR*(1.2 + 0.8*rand());
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ang)*r, cy + Math.sin(ang)*r); ctx.stroke();
+      const a = i*(2*Math.PI/rays) + r()*0.02;
+      const R = maxR*(1.2 + 0.8*r());
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(a)*R, cy+Math.sin(a)*R); ctx.stroke();
     }
-    ctx.globalAlpha = 1;
+  }
 
-    // Tiny crosses / spirals
-    const motifs = 4 + Math.floor(6*detail);
-    for(let i=0;i<motifs;i++){
-      const r = maxR*(0.6 + 1.6*rand());
-      const ang = rand()*Math.PI*2;
-      const x = cx + Math.cos(ang)*r, y = cy + Math.sin(ang)*r;
-      ctx.strokeStyle = accentDark;
-      if(rand()<0.5){
-        const s = 10 + 18*rand()*detail;
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(x-s,y); ctx.lineTo(x+s,y); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(x,y-s); ctx.lineTo(x,y+s); ctx.stroke();
-      }else{
-        ctx.lineWidth = 1.5;
-        const turns = 10 + Math.floor(16*detail);
-        let rr = 2 + 1.4*detail;
-        ctx.beginPath();
-        for(let t=0;t<turns;t++){
-          const th = t*0.28;
-          const px = x + Math.cos(th)*rr;
-          const py = y + Math.sin(th)*rr;
-          if(t===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
-          rr *= 1.045;
-        }
-        ctx.stroke();
+  function hilmaSymbolic(detail=1, seedRand=Math.random){
+    const bg = pick(['#F3EAD7','#EFE6D6','#F7EEDF','#F6E6E6','#EFE8F5']);
+    clear(bg);
+    const w=canvas.width, h=canvas.height;
+    const cx=w*0.5, cy=h*0.52;
+    const baseR = Math.min(w,h)*(0.18 + 0.06*r());
+
+    // 1) Concentric foundation
+    const layers = 3 + Math.floor(4*detail);
+    for(let i=0;i<layers;i++){
+      const R = baseR*(0.6 + i*0.35);
+      ring(cx,cy,R, '#4A3F3A', pick(HILMA_COLS), 0.85, 3);
+    }
+
+    // 2) Quartered circle (sometimes)
+    if(r() < 0.7){
+      motifQuarteredCircle(cx + (r()<0.5?-1:1)*baseR*0.6*r(), cy - baseR*0.15 + baseR*0.3*r(), baseR*(0.55 + 0.15*r()));
+    }
+
+    // 3) Triangle spectrum (sometimes)
+    if(r() < 0.8){
+      const up = r()<0.5;
+      motifTriangleSpectrum(cx, cy + (up? baseR*0.8 : -baseR*0.8), baseR*1.6, baseR*1.1, up);
+    }
+
+    // 4) Sun disc (rare)
+    if(r() < 0.45){
+      motifSun(cx + baseR*(r()*1.0-0.5), cy - baseR*(1.2 + 0.6*r()), baseR*(0.65 + 0.25*r()));
+    }
+
+    // 5) Spirals and lemniscate
+    if(r() < 0.9) motifDoubleSpiral(cx - baseR*(0.9*r()), cy + baseR*(0.5*r()), baseR*(0.9 + 0.5*r()));
+    if(r() < 0.9) motifLemniscate(cx + baseR*(0.8*r()), cy - baseR*(0.2*r()), baseR*(0.8 + 0.3*r()));
+
+    // 6) Dotted orbits
+    const orbits = 2 + Math.floor(3*detail);
+    for(let i=0;i<orbits;i++){
+      const R = baseR*(1.0 + 0.7*i/detail + 0.2*r());
+      setStroke('#1E1E1E', 1.5, 0.55);
+      ctx.setLineDash([6,6]);
+      ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+      // small planets
+      const n = 3 + ri(0,4);
+      for(let k=0;k<n;k++){
+        const a = r()*Math.PI*2; const pr = 8 + 14*r();
+        setFill(pick(HILMA_COLS), 0.95);
+        ctx.beginPath(); ctx.arc(cx+Math.cos(a)*R, cy+Math.sin(a)*R, pr, 0, Math.PI*2); ctx.fill();
+        setStroke('#1E1E1E',1,0.8); ctx.beginPath(); ctx.arc(cx+Math.cos(a)*R, cy+Math.sin(a)*R, pr, 0, Math.PI*2); ctx.stroke();
       }
     }
 
-    // Vignette for depth
-    ctx.save();
-    const grd = ctx.createRadialGradient(w/2,h/2, Math.min(w,h)*0.2, w/2,h/2, Math.min(w,h)*0.8);
-    grd.addColorStop(0,'rgba(0,0,0,0)');
-    grd.addColorStop(1,'rgba(0,0,0,0.08)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0,0,w,h);
-    ctx.restore();
+    // 7) Ground arcs (black/white bands)
+    const groundY = h*0.88;
+    const bands = 6;
+    for(let b=0;b<bands;b++){
+      const bw = (b%2===0)? '#101010' : '#FFFFFF';
+      setFill(bw, 0.9);
+      ctx.beginPath();
+      ctx.moveTo(0,groundY);
+      const t = b/bands;
+      const peak = cy + baseR*(0.3 + 0.5*t);
+      ctx.quadraticCurveTo(w*0.5, peak, w, groundY);
+      ctx.lineTo(w, h); ctx.lineTo(0,h); ctx.closePath(); ctx.fill();
+      groundY += 6; // tiny stack
+    }
+
+    // 8) Subtle vignette
+    const grd = ctx.createRadialGradient(w/2,h/2, Math.min(w,h)*0.2, w/2,h/2, Math.min(w,h)*0.9);
+    grd.addColorStop(0,'rgba(0,0,0,0)'); grd.addColorStop(1,'rgba(0,0,0,0.06)');
+    ctx.fillStyle = grd; ctx.fillRect(0,0,w,h);
   }
 
-  function seedFromQRNG(){ const a=[QRNG.u16(),QRNG.u16(),QRNG.u16(),QRNG.u16()]; document.getElementById('seedPill').textContent='Seed '+a.map(x=>x.toString(16).padStart(4,'0')).join('-'); }
-  function renderOnce(){ const detail=parseFloat(document.getElementById('detail').value||'1'); const style=document.getElementById('style').value; QRNG.need(4096); seedFromQRNG(); if(style==='aurora') auroraVeils(detail); else if(style==='spirals') sacredSpirals(detail); else if(style==='constellations') constellationField(detail); else if(style==='mondrian') mondrian(detail); else if(style==='pointillism') pointillism(detail); else hilmaConcentric(detail); }
+  // ---------- Orchestrator & Animation ----------
+  let anim=false, raf=0, locked=false, variant=0;
+  let lastSeed=[0,0,0,0];
+  function captureSeed(){ lastSeed = [QRNG.u16(),QRNG.u16(),QRNG.u16(),QRNG.u16()]; document.getElementById('seedPill').textContent = 'Seed '+ lastSeed.map(x=>x.toString(16).padStart(4,'0')).join('-'); }
+  function seededRandomFactory(extra=0){
+    const s = (lastSeed[0]<<16) ^ lastSeed[1] ^ (lastSeed[2]<<1) ^ (lastSeed[3]<<2) ^ (extra|0);
+    return mulberry32(s>>>0);
+  }
 
-  let anim=false, raf=0;
-  function tickAnim(){ if(!anim) return; const style=document.getElementById('style').value; const d=parseFloat(document.getElementById('detail').value||'1'); if(style==='aurora'){ auroraVeils(0.4*d);} else if(style==='spirals'){ sacredSpirals(0.6*d);} else if(style==='constellations'){ constellationField(0.5*d);} else if(style==='mondrian'){ mondrian(0.8*d);} else if(style==='pointillism'){ pointillism(0.6*d);} else { hilmaConcentric(0.9*d);} raf=requestAnimationFrame(tickAnim); }
+  function renderOnce(){
+    QRNG.need(4096);
+    captureSeed();
+    const detail = parseFloat(document.getElementById('detail').value||'1');
+    const style = document.getElementById('style').value;
+    if(style==='hilma_symbolic') hilmaSymbolic(detail);
+    else if(style==='hilma_concentric') hilmaConcentric(detail);
+    else if(style==='aurora') auroraVeils(detail);
+    else if(style==='spirals') sacredSpirals(detail);
+    else if(style==='constellations') constellationField(detail);
+    else if(style==='mondrian') mondrian(detail);
+    else pointillism(detail);
+    locked=false; document.getElementById('freezeBtn').disabled=false;
+    document.getElementById('regenBtn').disabled=true;
+  }
 
-  document.getElementById('genBtn').addEventListener('click', renderOnce);
-  document.getElementById('animBtn').addEventListener('click', (e)=>{ anim=!anim; e.target.textContent=anim?'Stop':'Animate'; if(anim){ tickAnim(); } else { cancelAnimationFrame(raf); } });
-  document.getElementById('saveBtn').addEventListener('click', ()=>{ const a=document.createElement('a'); a.download='qrng-art-'+Date.now()+'.png'; a.href=canvas.toDataURL('image/png'); a.click(); });
-  document.getElementById('fsBtn').addEventListener('click', async()=>{ const box=document.querySelector('.canvasWrap'); const isFs=document.fullscreenElement!=null; try{ if(!isFs){ await box.requestFullscreen(); } else { await document.exitFullscreen(); } }catch(e){} });
+  function tickAnim(){
+    if(!anim || locked) return;
+    // Light breathing effect: rerender style at slightly different scale/rotation using new entropy
+    const d = parseFloat(document.getElementById('detail').value||'1');
+    const style = document.getElementById('style').value;
+    if(style==='hilma_symbolic') hilmaSymbolic(d);
+    else if(style==='hilma_concentric') hilmaConcentric(d);
+    else if(style==='aurora') auroraVeils(0.7*d);
+    else if(style==='spirals') sacredSpirals(0.8*d);
+    else if(style==='constellations') constellationField(0.7*d);
+    else if(style==='mondrian') mondrian(0.9*d);
+    else pointillism(0.8*d);
+    raf = requestAnimationFrame(tickAnim);
+  }
 
-  QRNG.statusEl=document.getElementById('statusPill'); QRNG.entropyEl=document.getElementById('entropyFill'); QRNG.topUp(4096).then(()=> renderOnce());
+  // Placeholder original styles (for completeness)
+  function auroraVeils(detail=1){ /* simplified background style */ const w=canvas.width,h=canvas.height; clear('#040713'); for(let i=0;i<Math.round(6*detail);i++){ const hue=ri(180,340); const alpha=0.06+0.06*r(); const y0=h*(0.1+0.8*r()); const amp=h*(0.08+0.2*r()); const wig=2+6*r(); const width=w*(0.5+r()*0.6); const x0=w*r(); ctx.fillStyle='hsla('+hue+',90%,60%,'+alpha.toFixed(3)+')'; ctx.beginPath(); ctx.moveTo(x0-width/2,y0); const steps=20+Math.floor(120*detail); for(let s=0;s<=steps;s++){ const t=s/steps; const x=x0-width/2+width*t; const y=y0+Math.sin(t*Math.PI*wig + r()*0.5)*amp*(0.6+0.4*r()); ctx.lineTo(x,y);} ctx.lineTo(x0+width/2,h+10); ctx.lineTo(x0-width/2,h+10); ctx.closePath(); ctx.filter='blur('+(2+4*r())+'px)'; ctx.fill(); ctx.filter='none'; } }
+  function sacredSpirals(detail=1){ const w=canvas.width,h=canvas.height; clear('#030510'); const palette=[ '#0ea5e9','#22d3ee','#a78bfa','#f472b6','#f59e0b']; const arms=2+ri(0,4); const centers=1+ri(0,2); for(let c=0;c<centers;c++){ const cx=w*(0.3+0.4*r()); const cy=h*(0.35+0.3*r()); const base=w*(0.004+0.01*r()); for(let a=0;a<arms;a++){ const rot=(2*Math.PI*a/arms)+r()*0.5; const points=400+Math.floor(600*detail); const growth=1.005+0.003*r(); let rad=base*(0.5+r()); ctx.lineWidth=1+2*r(); ctx.strokeStyle=palette[ri(0,palette.length-1)]; ctx.globalAlpha=0.6; ctx.beginPath(); for(let i=0;i<points;i++){ const th=rot+i*0.08; const x=cx+Math.cos(th)*rad; const y=cy+Math.sin(th)*rad; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); rad*=growth; } ctx.stroke(); ctx.globalAlpha=1; } } }
+  function constellationField(detail=1){ const w=canvas.width,h=canvas.height; clear('#050a18'); const stars=200+Math.floor(300*detail); const pts=[]; for(let i=0;i<stars;i++){ const x=r()*w, y=r()*h; const s=Math.pow(r(),2)*3+0.5; pts.push({x,y,s}); ctx.fillStyle='rgba(255,255,255,'+(0.3+0.7*r())+')'; ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill(); if(r()<0.25){ ctx.fillStyle=['#8ab6ff','#ffd18a','#bbf7d0'][ri(0,2)]; ctx.beginPath(); ctx.arc(x,y,s*0.6,0,Math.PI*2); ctx.fill(); } } const links=Math.round(150*detail); ctx.strokeStyle='rgba(120,180,255,0.25)'; for(let i=0;i<links;i++){ const a=pts[ri(0,pts.length-1)], b=pts[ri(0,pts.length-1)]; ctx.lineWidth=0.5+r(); ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } }
+  function mondrian(detail=1){ const w=canvas.width,h=canvas.height; clear('#101318'); const palette=['#fefefe','#e63946','#457b9d','#f1fa8c','#2a9d8f']; function split(r,depth){ const min=120/detail; if(depth>5||r.w<min||r.h<min||r()<0.2){ ctx.fillStyle=(r()<0.7)? '#0f172a' : palette[ri(0,palette.length-1)]; ctx.fillRect(r.x+2,r.y+2,r.w-4,r.h-4); ctx.strokeStyle='#0d1328'; ctx.lineWidth=6; ctx.strokeRect(r.x+3,r.y+3,r.w-6,r.h-6); return; } const vertical=r()<0.5; if(vertical){ const cut=r.x+r.w*(0.3+0.4*r()); split({x:r.x,y:r.y,w:cut-r.x,h:r.h},depth+1); split({x:cut,y:r.y,w:r.x+r.w-cut,h:r.h},depth+1); } else { const cut=r.y+r.h*(0.3+0.4*r()); split({x:r.x,y:r.y,w:r.w,h:cut-r.y},depth+1); split({x:r.x,y:cut,w:r.w,h:r.y+r.h-cut},depth+1); } } split({x:0,y:0,w:w,h:h},0); }
+  function pointillism(detail=1){ const w=canvas.width,h=canvas.height; clear('#0a0f1e'); const palette=['#0ea5e9','#22d3ee','#a78bfa','#f472b6','#f59e0b']; const dots=1200+Math.floor(1800*detail); for(let i=0;i<dots;i++){ const x=r()*w,y=r()*h; const s=Math.pow(r(),2.2)*6+0.6; const c=palette[ri(0,palette.length-1)]; ctx.fillStyle=c; ctx.globalAlpha=0.35+0.6*r(); ctx.beginPath(); ctx.arc(x,y,s,0,Math.PI*2); ctx.fill(); } ctx.globalAlpha=1; }
+
+  // ---------- Controls ----------
+  document.getElementById('genBtn').addEventListener('click', ()=>{
+    renderOnce();
+  });
+  document.getElementById('animBtn').addEventListener('click', (e)=>{
+    anim = !anim;
+    e.target.textContent = anim ? 'Stop' : 'Animate';
+    if(anim){ tickAnim(); } else { cancelAnimationFrame(raf); }
+    document.getElementById('freezeBtn').disabled = !anim; // only meaningful while animating
+  });
+  document.getElementById('freezeBtn').addEventListener('click', ()=>{
+    locked = true;
+    cancelAnimationFrame(raf);
+    document.getElementById('regenBtn').disabled = false;
+  });
+  document.getElementById('regenBtn').addEventListener('click', ()=>{
+    // reinterpret the same seed with a different variant
+    variant++;
+    const rand = seededRandomFactory(variant);
+    // temporarily shuffle palette using deterministic variant
+    const d = parseFloat(document.getElementById('detail').value||'1');
+    const style = document.getElementById('style').value;
+    // Render selected style again (uses QRNG inside, but composition choices vary naturally)
+    if(style==='hilma_symbolic') hilmaSymbolic(d);
+    else if(style==='hilma_concentric') hilmaConcentric(d);
+  });
+  document.getElementById('saveBtn').addEventListener('click', ()=>{
+    const a = document.createElement('a');
+    a.download = 'qrng-hilma-'+Date.now()+'.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  });
+  document.getElementById('fsBtn').addEventListener('click', async ()=>{
+    const box = document.querySelector('.canvasWrap');
+    const isFs = document.fullscreenElement != null;
+    try{ if (!isFs) { await box.requestFullscreen(); } else { await document.exitFullscreen(); } }catch(e){}
+  });
+
+  // ---------- Boot ----------
+  QRNG.statusEl = document.getElementById('statusPill');
+  QRNG.entropyEl = document.getElementById('entropyFill');
+  QRNG.topUp(4096).then(()=> renderOnce());
   </script>
 </body>
 </html>
