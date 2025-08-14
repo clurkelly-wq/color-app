@@ -1,0 +1,206 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Color Coherence Lamp</title>
+  <meta name="theme-color" content="#38bdf8"/>
+  <style>
+    :root{
+      --bg:#0b0f1a; --panel:#121936; --ink:#eaf2ff; --muted:#9bb0d7; --accent:#38bdf8;
+      --border:#263259;
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .wrap{max-width:860px;margin:0 auto;padding:20px 16px 44px}
+    header{padding:10px 0 16px;text-align:center}
+    h1{margin:0;font-size:22px;letter-spacing:.3px}
+    .subtitle{color:var(--muted);font-size:13px;margin-top:6px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:14px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
+    button{background:linear-gradient(180deg,#38bdf8,#0ea5e9);border:none;color:#00111a;border-radius:12px;
+      padding:12px 18px;font-weight:800;cursor:pointer;font-size:16px}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .lamp{width:100%;aspect-ratio: 3/2;border-radius:18px;border:1px solid var(--border);
+      background:#0a1025;box-shadow:0 20px 80px rgba(0,0,0,.35) inset, 0 10px 30px rgba(56,189,248,.18);
+      transition: background 220ms ease, box-shadow 220ms ease, transform 160ms ease}
+    .lamp:hover{transform: translateY(-1px)}
+    .rowinfo{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:10px}
+    .pill{display:inline-block;border:1px solid var(--border);background:#0f1735;color:#cfe3ff;
+      padding:8px 12px;border-radius:999px;font-size:12px}
+    .muted{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+    .tiny{font-size:11px;color:#a8b7dc;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Color Coherence Lamp</h1>
+      <div class="subtitle">Use focus to nudge a quantum RNG — watch the color respond</div>
+    </header>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <button id="startBtn">Start</button>
+        <button id="stopBtn" disabled>End</button>
+      </div>
+      <div class="lamp" id="lamp"></div>
+      <div class="rowinfo">
+        <span class="pill" id="status">Idle</span>
+        <span class="pill" id="elapsed">Elapsed 00:00</span>
+        <span class="pill" id="modePill">Mode: Recent Z</span>
+        <span class="pill" id="colorHex">#000000</span>
+      </div>
+      <div class="muted">Color maps to recent Z‑drift (last 15 tests) — sensitive, smooth, not reliant on extreme Z.</div>
+      <div class="tiny">Tip: Soften your gaze; breathe together; hold a gentle intention and notice shifts.</div>
+    </div>
+  </div>
+
+  <script>
+  // =============== Helpers ===============
+  function erf(x){const s=x>=0?1:-1; x=Math.abs(x); const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911; const t=1/(1+p*x); const y=1-((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x); return s*y;}
+  function cdfNormal(z){return .5*(1+erf(z/Math.SQRT2));}
+  function stoufferZ(zs){if(!zs.length) return 0; const s=zs.reduce((a,b)=>a+b,0); return s/Math.sqrt(zs.length);}
+  function twoSidedP(z){return 2*(1-cdfNormal(Math.abs(z)));}
+  function clamp(v,a,b){return Math.max(a, Math.min(b, v));}
+  function hsl(h,s,l){ return `hsl(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%)`; }
+  function hslToHex(h, s, l) {
+    let r, g, b;
+    if (s === 0) { r = g = b = l; }
+    else {
+      const hue2rgb=(p,q,t)=>{ if(t<0) t+=1; if(t>1) t-=1;
+        if(t<1/6) return p+(q-p)*6*t;
+        if(t<1/2) return q;
+        if(t<2/3) return p+(q-p)*(2/3-t)*6;
+        return p; };
+      const q = l<0.5 ? l*(1+s) : l + s - l*s;
+      const p = 2*l - q;
+      r = hue2rgb(p,q,h+1/3);
+      g = hue2rgb(p,q,h);
+      b = hue2rgb(p,q,h-1/3);
+    }
+    const toHex=x=>Math.round(x*255).toString(16).padStart(2,'0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+  }
+
+  // =============== Lamp mapping (responsive rainbow) ===============
+  const LAMP = {
+    ema: 0, hasEma:false,
+    smooth: 0.75,   // smoothing (0 = instant, 0.95 = floaty)
+    gain: 3.0,      // sensitivity so small Z moves color
+    t: 0,           // breathing motion
+    recent: [],     // window of per-trial z
+    win: 15,        // window size
+  };
+  function updateLamp(score){
+    // Smooth + breathe
+    if(!LAMP.hasEma){ LAMP.ema = score; LAMP.hasEma=true; }
+    LAMP.ema = LAMP.smooth * LAMP.ema + (1 - LAMP.smooth) * score;
+    LAMP.t += 0.012;
+    const felt = LAMP.ema + 0.05*Math.sin(LAMP.t);
+
+    // Boost small moves, cap big ones
+    const x = Math.tanh(LAMP.gain * felt); // -1..1
+    // Map -1..1 to a full rainbow sweep (0..360)
+    const hue = ((x+1)/2) * 360; // 0..360
+    const sat = 80;
+    const light = 55;
+
+    const el = document.getElementById('lamp');
+    el.style.background = hsl(hue, sat, light);
+    el.style.boxShadow = `0 20px 80px rgba(0,0,0,.35) inset, 0 10px 30px hsla(${Math.round(hue)},80%,50%,.25)`;
+    document.getElementById('colorHex').textContent = hslToHex(hue/360, sat/100, light/100);
+  }
+
+  // =============== QRNG (with fallback) ===============
+  async function qrng(len){
+    try{
+      const r = await fetch(`/.netlify/functions/qrng?len=${len}`, {mode:'cors'});
+      if(!r.ok) throw new Error('qrng http '+r.status);
+      const j = await r.json();
+      const arr = j.data || [];
+      if(arr.length) return new Uint16Array(arr.map(x=>x & 0xFFFF));
+      throw new Error('qrng empty');
+    }catch(e){
+      // Fallback: secure local RNG
+      const u16 = new Uint16Array(len);
+      crypto.getRandomValues(u16);
+      return u16;
+    }
+  }
+
+  // =============== Session loop ===============
+  let running=false, timer=null, t0=0;
+  const statusEl = document.getElementById('status');
+  const elapsedEl = document.getElementById('elapsed');
+
+  function setStatus(txt){ statusEl.textContent = txt; }
+
+  function startTimer(){
+    t0 = Date.now();
+    if(timer) clearInterval(timer);
+    timer = setInterval(()=>{
+      const ms=Date.now()-t0;
+      const m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000);
+      elapsedEl.textContent = `Elapsed ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }, 250);
+  }
+  function stopTimer(){ if(timer) clearInterval(timer); timer=null; }
+
+  async function tick(){
+    try{
+      // one "trial": pull enough 16-bit words to cover N bits
+      const bitsPerTrial = 200; // small, frequent
+      const words = Math.ceil(bitsPerTrial/16);
+      const u16 = await qrng(words);
+      // convert to bits
+      const bits = [];
+      for(let i=0;i<u16.length;i++){ let v=u16[i]; for(let b=0;b<16;b++){ bits.push((v>>b)&1); } }
+      const trial = bits.slice(0, bitsPerTrial);
+      const sum = trial.reduce((a,b)=>a+b,0);
+      const n = bitsPerTrial, mu=n/2, sigma=Math.sqrt(n/4);
+      const z = (sum - mu)/sigma;  // per-trial z
+
+      // keep recent window, compute responsive score
+      LAMP.recent.push(z);
+      while(LAMP.recent.length > LAMP.win) LAMP.recent.shift();
+      const recentZ = stoufferZ(LAMP.recent);
+
+      updateLamp(recentZ);
+      setStatus(`Recent Z ≈ ${recentZ.toFixed(2)} • p≈${twoSidedP(recentZ).toExponential(2)}`);
+    }catch(e){
+      setStatus('Load failed — retrying…');
+    }
+  }
+
+  async function loop(){
+    while(running){
+      await tick();
+      await new Promise(r=> setTimeout(r, 1000)); // 1s cadence
+    }
+  }
+
+  // =============== Buttons ===============
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn  = document.getElementById('stopBtn');
+  startBtn.addEventListener('click', ()=>{
+    if(running) return;
+    running=true;
+    startBtn.disabled=true; stopBtn.disabled=false;
+    setStatus('Running…');
+    startTimer();
+    loop();
+  });
+  stopBtn.addEventListener('click', ()=>{
+    running=false;
+    startBtn.disabled=false; stopBtn.disabled=true;
+    stopTimer();
+    setStatus('Stopped');
+  });
+
+  // Prime a calm color
+  updateLamp(0);
+  </script>
+</body>
+</html>
